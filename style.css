@@ -1,0 +1,37 @@
+/* Aangepaste CSS-styling voor het Ontdekstation */
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f0f0f0;
+    margin: 0;
+    padding: 0;
+}
+
+header {
+    background-color: #ff5722; /* Aangepaste kleur voor het Ontdekstation */
+    color: #fff;
+    text-align: center;
+    padding: 20px;
+}
+
+h1 {
+    margin: 0;
+}
+
+main {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 20px;
+    background-color: #fff;
+    box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+}
+
+button {
+    background-color: #007BFF; /* Aangepaste kleur voor actieknop */
+    color: #fff;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+/* Voeg hier meer aangepaste CSS-stijlen toe zoals gewenst voor het Ontdekstation */
