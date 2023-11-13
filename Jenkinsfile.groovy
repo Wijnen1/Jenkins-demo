@@ -22,8 +22,11 @@ pipeline {
                     sh "kubectl rollout status deployment/$nginxDeploymentName"
 
                     // Copy files to the pod
+                    echo "Copying index.html..."
                     sh "kubectl cp $gitRepoDir/index.html $(kubectl get pod -l app=$nginxDeploymentName -o jsonpath='{.items[0].metadata.name}'):/usr/share/nginx/html/index.html"
+                    echo "Copying style.css..."
                     sh "kubectl cp $gitRepoDir/style.css $(kubectl get pod -l app=$nginxDeploymentName -o jsonpath='{.items[0].metadata.name}'):/usr/share/nginx/html/style.css"
+
                 }
             }
         }
