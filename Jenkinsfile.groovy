@@ -6,27 +6,25 @@ pipeline {
     }
 
     stages {
-        stage('Create Nginx Deployment') {
+        stage('Create Nginx Pod') {
             steps {
                 script {
-                    def nginxDeploymentName = 'nginx-deployment'
-                    def nginxContainerName = 'nginx-container'
+                    def nginxPodName = 'nginx-pod-name'
+                    sh "kubectl run $nginxPodName --image=nginx --restart=Always"
+                }
+            }
+        }
+
+        stage('Download HTML and CSS') {
+            steps {
+                script {
                     def gitRepoUrl = 'https://github.com/Wijnen1/Jenkins-demo.git'
                     def gitRepoDir = 'github-repo'
+                    def nginxPodName = 'nginx-pod-name'
 
                     sh "git clone $gitRepoUrl $gitRepoDir"
-                    sh "kubectl create deployment $nginxDeploymentName --image=nginx --dry-run=client -o yaml > deployment.yaml"
-                    sh "kubectl apply -f deployment.yaml"
-
-                    // Wait for the deployment to be ready before proceeding
-                    sh "kubectl rollout status deployment/$nginxDeploymentName"
-
-                    // Copy files to the pod
-                    echo "Copying index.html..."
-                    sh "kubectl cp $gitRepoDir/index.html $(kubectl get pod -l app=$nginxDeploymentName -o jsonpath='{.items[0].metadata.name}'):/usr/share/nginx/html/index.html"
-                    echo "Copying style.css..."
-                    sh "kubectl cp $gitRepoDir/style.css $(kubectl get pod -l app=$nginxDeploymentName -o jsonpath='{.items[0].metadata.name}'):/usr/share/nginx/html/style.css"
-
+                    sh "kubectl cp $gitRepoDir/index.html $nginxPodName:/usr/share/nginx/html/index.html"
+                    sh "kubectl cp $gitRepoDir/style.css $nginxPodName:/usr/share/nginx/html/style.css"
                 }
             }
         }
