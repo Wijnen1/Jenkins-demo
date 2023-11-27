@@ -1,5 +1,7 @@
 pipeline {
-    agent any
+    agent {
+        label 'kubeagent'
+    }
 
     environment {
         KUBECONFIG = credentials('kubernetes-credentials')
