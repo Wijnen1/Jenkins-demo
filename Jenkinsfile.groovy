@@ -1,27 +1,6 @@
 pipeline {
     agent {
-        kubernetes {
-            yaml """
-apiVersion: v1
-kind: Pod
-metadata:
-  labels:
-    kubeagent: agent
-spec:
-  containers:
-  - name: jnlp
-    image: 'jenkins/jnlp-slave:latest'
-  - name: nginx-container
-    image: nginx:latest
-    volumeMounts:
-    - name: nginx-config
-      mountPath: /etc/nginx/conf.d
-  volumes:
-  - name: nginx-config
-    hostPath:
-      path: ${WORKSPACE}/etc/nginx
-"""
-        }
+        label 'kubeagent'
     }
 
     environment {
@@ -29,63 +8,57 @@ spec:
     }
 
     stages {
-        stage('Clone Git Repository') {
+        stage('Create Jenkins Agent Pod') {
             steps {
                 script {
-                    // Clean workspace before cloning
-                    deleteDir()
+                    def jnlpPodName = 'jnlp-pod-name'
+                    def jnlpImage = 'jenkins/jnlp-slave:latest'
+                    
+                    // Create Jenkins Agent (JNLP) pod
+                    sh "kubectl run $jnlpPodName --image=$jnlpImage --restart=Always"
+                }
+            }
+        }
+
+        stage('Create Nginx Pod') {
+            steps {
+                script {
+                    def nginxPodName = 'nginx-pod-name'
+                    
+                    // Create NGINX pod
+                    sh "kubectl run $nginxPodName --image=nginx --restart=Always"
+                }
+            }
+        }
+
+        stage('Download HTML and CSS') {
+            steps {
+                script {
+                    def gitRepoUrl = 'https://github.com/Wijnen1/Jenkins-demo.git'
+                    def gitRepoDir = 'github-repo'
+                    def nginxPodName = 'nginx-pod-name'
+                    def jnlpPodName = 'jnlp-pod-name'
 
                     // Clone the Git repository
-                    git branch: 'main', credentialsId: '7b908686-b320-4d0b-b18a-48804e42b46f', url: 'https://github.com/Wijnen1/Jenkins-demo.git'
-                }
-            }
-        }
+                    sh "git clone $gitRepoUrl $gitRepoDir"
 
-        stage('Deploy NGINX Pod') {
-            steps {
-                script {
-                    // Deployment steps remain the same
-                    def nginxPod = """apiVersion: v1
-kind: Pod
-metadata:
-  name: nginx-pod
-spec:
-  containers:
-  - name: nginx-container
-    image: nginx:latest
-    volumeMounts:
-    - name: nginx-config
-      mountPath: /etc/nginx/conf.d
-  volumes:
-  - name: nginx-config
-    hostPath:
-      path: ${WORKSPACE}/etc/nginx
-"""
-                    writeFile file: 'nginx-pod.yaml', text: nginxPod
+                    // Copy HTML and CSS files to NGINX pod
+                    sh "kubectl cp $gitRepoDir/index.html $nginxPodName:/usr/share/nginx/html/index.html"
+                    sh "kubectl cp $gitRepoDir/style.css $nginxPodName:/usr/share/nginx/html/style.css"
 
-                    sh 'kubectl apply -f nginx-pod.yaml'
-                }
-            }
-        }
-
-        stage('Verify Deployment') {
-            steps {
-                script {
-                    // Add verification steps if needed
-                    sh 'kubectl get pods'
+                    // Copy Git repository to Jenkins Agent (JNLP) pod
+                    sh "kubectl cp $gitRepoDir $jnlpPodName:/workspace/"
                 }
             }
         }
     }
 
-post {
-    always {
-        node {
-            // Clean up resources
-            script {
-                sh 'kubectl delete pod nginx-pod'
-            }
+    post {
+        success {
+            echo 'De pods en bestanden zijn succesvol aangemaakt en bijgewerkt.'
+        }
+        failure {
+            echo 'Het proces is mislukt.'
         }
     }
-  }
 }
