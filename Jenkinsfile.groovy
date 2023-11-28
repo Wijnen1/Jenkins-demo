@@ -1,6 +1,27 @@
 pipeline {
     agent {
-        label 'kubeagent'
+        kubernetes {
+            yaml """
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    kubeagent: agent
+spec:
+  containers:
+  - name: jnlp
+    image: 'jenkins/jnlp-slave:latest'
+  - name: nginx-container
+    image: nginx:latest
+    volumeMounts:
+    - name: nginx-config
+      mountPath: /etc/nginx/conf.d
+  volumes:
+  - name: nginx-config
+    hostPath:
+      path: ${WORKSPACE}/etc/nginx
+"""
+        }
     }
 
     environment {
@@ -8,36 +29,61 @@ pipeline {
     }
 
     stages {
-        stage('Create Nginx Pod') {
+        stage('Clone Git Repository') {
             steps {
                 script {
-                    def nginxPodName = 'nginx-pod-name'
-                    sh "kubectl run $nginxPodName --image=nginx --restart=Always"
+                    // Clean workspace before cloning
+                    deleteDir()
+
+                    // Clone the Git repository
+                    git branch: 'main', credentialsId: '7b908686-b320-4d0b-b18a-48804e42b46f', url: 'https://github.com/Wijnen1/Jenkins-demo.git'
                 }
             }
         }
 
-        stage('Download HTML and CSS') {
+        stage('Deploy NGINX Pod') {
             steps {
                 script {
-                    def gitRepoUrl = 'https://github.com/Wijnen1/Jenkins-demo.git'
-                    def gitRepoDir = 'github-repo'
-                    def nginxPodName = 'nginx-pod-name'
+                    // Deployment steps remain the same
+                    def nginxPod = """apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx-pod
+spec:
+  containers:
+  - name: nginx-container
+    image: nginx:latest
+    volumeMounts:
+    - name: nginx-config
+      mountPath: /etc/nginx/conf.d
+  volumes:
+  - name: nginx-config
+    hostPath:
+      path: ${WORKSPACE}/etc/nginx
+"""
+                    writeFile file: 'nginx-pod.yaml', text: nginxPod
 
-                    sh "git clone $gitRepoUrl $gitRepoDir"
-                    sh "kubectl cp $gitRepoDir/index.html $nginxPodName:/usr/share/nginx/html/index.html"
-                    sh "kubectl cp $gitRepoDir/style.css $nginxPodName:/usr/share/nginx/html/style.css"
+                    sh 'kubectl apply -f nginx-pod.yaml'
+                }
+            }
+        }
+
+        stage('Verify Deployment') {
+            steps {
+                script {
+                    // Add verification steps if needed
+                    sh 'kubectl get pods'
                 }
             }
         }
     }
 
     post {
-        success {
-            echo 'De pod en bestanden zijn succesvol aangemaakt en bijgewerkt.'
-        }
-        failure {
-            echo 'Het proces is mislukt.'
+        always {
+            // Clean up resources
+            script {
+                sh 'kubectl delete pod nginx-pod'
+            }
         }
     }
 }
