@@ -78,8 +78,9 @@ spec:
         }
     }
 
-    post {
-        always {
+post {
+    always {
+        node {
             // Clean up resources
             script {
                 sh 'kubectl delete pod nginx-pod'
